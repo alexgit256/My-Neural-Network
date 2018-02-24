@@ -40,15 +40,54 @@ namespace NeuralNetwork
         List<double> GetOutput();
     }
 
-    public abstract class NeuronAbstractClass<AF>: INeuron<AF> where AF : IActivationFunction
+    public class Synapse
+    {
+        double WeightForward;
+        public double GetWeightForward { get { return WeightForward; } }
+        double WeightBackward;
+        public double GetWeightBackward { get { return WeightBackward; } }
+
+        NeuronAbstractClass<IActivationFunction> ForwardLink;
+        public NeuronAbstractClass<IActivationFunction> GetForwardLink { get { return ForwardLink; } }
+        NeuronAbstractClass<IActivationFunction> BackwardLink;
+        public NeuronAbstractClass<IActivationFunction> GetBackwardLink { get { return BackwardLink; } }
+    }
+
+    public abstract class NeuronAbstractClass<AF> : INeuron<AF> where AF : IActivationFunction
     {
         private AF ActivationFunction;
+        private List<Synapse> SynapseSet;
         private double Input;
-        public void FillInput(double A)
+        public NeuronAbstractClass(AF AFu, List<Synapse> SS)
         {
-            Input = A;
+            this.ActivationFunction = AFu;
+            this.SynapseSet = SS;
         }
 
+        public void FillInput(double A)
+        {
+            Input = FormatInputAvg();
+        }
+
+        public void FillInputFromPrevLayer()
+        {
+            Input = FormatInputAvg();
+        }
+
+        private double FormatInputAvg()    //function that converts previous layer's data to input value. Doesn't work with empty synapse set.
+        {
+            double output = 0;
+            int counter = 0;
+            foreach (Synapse S in SynapseSet)
+            {
+                counter++;
+                output += S.GetBackwardLink.GetOutput();
+            }
+            if (counter > 0)
+                return output / counter;
+            else
+                return double.MinValue; 
+        }
 
         public double GetOutput()
         {
@@ -67,11 +106,16 @@ namespace NeuralNetwork
             this.Input = Inp;
         }
 
+        public void FillInput(List<Double> A)
+        {
+            Input = A;
+        }
+
         public void ProcessInfo()   //Loads signal into EACH Neuron's internal storage
         {
             foreach (var N in NeuronSet)
             {
-                N.FillInput(FormatInputAvg());
+                N.FillInput(1f);
             }
         }
 
@@ -84,27 +128,19 @@ namespace NeuralNetwork
             }
             return output;
         }
-
-        private double FormatInputAvg()    //function that converts previous layer's data to input value. 
-        {
-            double X = 0;
-            foreach (double d in Input)
-            {
-                X += d;
-            }
-            return X/Input.Count;
-        }
     }
 
     public abstract class NeuronNetworkAbstractClass<T>: INeuronNetwork
     {
-        private List<INeuronLayer> Layers;
+        private NeuronLayerAbstractClass InputLayer;
+        private List<INeuronLayer> InternalLayers;
+        private NeuronLayerAbstractClass OutputLayer;
         private List<T> Input;
-        public abstract List<double> FormatInput(); //Converts data to neuron signal
+        public abstract List<double> FormatInput(); //Converts data to neuron signal. Needs override.
 
         public List<double> GetOutput()
         {
-            return null;
+            return OutputLayer.GetOutput();
         }
     }
 }
